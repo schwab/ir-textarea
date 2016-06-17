@@ -298,6 +298,8 @@ window.ir.textarea.extract =
 		}
 		
 		commonAncestor = top;
+        if(ends == null )
+            console.log("ends cannot be null");
 		while(starts.length && starts[0] == ends[0]) // && !(starts[0] == sc && utils.canHaveChildren(sc) && so == 0))
 		{
 			starts.shift();
