@@ -429,11 +429,19 @@ window.ir.textarea.wrap = (function() {
 			posr = wrap.normalizeWraps(posr,tag,attributes);
 			if(! wrap.detectOverlap(posr,tag))
 			{
-				var aString =  '';
-				if(attributes && attributes['style']) astring = ' style=' + attributes['style'];
-				if(attributes && attributes['class']) astring = astring + ' class=' + attributes['class'];
-				
-				return wrap.wrapRange(posr, "<" + tag + aString +	"><span id='insertionPoint'></span></" + cltag + ">", editor);
+                try
+                {
+                    var aString =  '';
+                    if(attributes && attributes['style']) astring = ' style=' + attributes['style'];
+                    if(attributes && attributes['class']) astring = astring + ' class=' + attributes['class'];
+
+                    return wrap.wrapRange(posr, "<" + tag + aString +	"><span id='insertionPoint'></span></" + cltag + ">", editor);
+                }
+                catch(err)
+                {
+                    console.log(err);
+                    console.log(err.stack)
+                }
 			}
 	}
     
@@ -479,69 +487,65 @@ window.ir.textarea.wrap = (function() {
             // if the firstNonCustomPos is the range's sContainer we are done with sHanging since no other wrap containers exist
             if((rangeDetails.sHanging || rangeDetails.eHanging) && rangeDetails.sAnc[0] != rangeDetails.sContainer)
             {
-                // perform split to isolate the selected part
-                var sPart0,sPart2;
-                var sPart1 = {"node":window.ir.textarea.extract.extractContents(rangeDetails.sMainPos,rangeDetails.eMainPos,{"top":rangeDetails.commonParent,delete:false})};
-                wrap.removeNodeWraps(sPart1.node,tag,attributes);
-                sPart1['anc'] = utils.ancestors(rangeDetails.sMainPos.container);
-                sPart1['first_clean_or_custCont'] = rangeDetails.firstCleanAncestorOrCustomContainer(sPart1,rangeDetails.sContainer,tag,attributes);
-                sPart1['unwrap_parent'] = rangeDetails.determineUnwrapParent(sPart1,rangeDetails.sContainer,tag,attributes);
-                sPart2 = {'node': window.ir.textarea.extract.extractContents({container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset }, {container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset + rangeDetails.eMainPos.container.length},
-                {"top":rangeDetails.commonParent,'delete':false}),"anc":[]};
-                sPart2['anc']= utils.ancestors(rangeDetails.sMainPos.container);
-                sPart2['first_clean_or_custCont'] = rangeDetails.firstCleanAncestorOrCustomContainer(sPart2,rangeDetails.sContainer,tag,attributes);
-                
-                sPart2['unwrap_parent'] = rangeDetails.determineUnwrapParent(sPart2,rangeDetails.sContainer,tag,attributes);
-
-                window.ir.textarea.extract.extractContents({container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset}, {container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset + rangeDetails.eMainPos.container.length},{"top":rangeDetails.commonParent,'delete':true})
-                // remove part1
-                window.ir.textarea.extract.extractContents(rangeDetails.sMainPos,rangeDetails.eMainPos,                                                  {"top":rangeDetails.commonParent,delete:true});
-                sPart2['new_unwrap_top'] = rangeDetails.duplicateAncTree(sPart2.node,sPart1.unwrap_parent,sPart1.anc)
-                
-                // validation of sPart2 before appending to dom
-                if((sPart2.node && sPart2.node.length > 0 && sPart2['first_clean_or_custCont'] == null))
-                    console.log('unexpected condition detected, part2 node exists, but no first_clean_or_custCont found');
-                
-                if(utils.isDescendantOf(sPart1.first_clean_custCont, sPart2['first_clean_or_custCont'],false))
-                { 
-                    console.log("unexpected condition, cannot set ePos container since it is an ancestor to sPos container");   
-                }
-                else
-                {
-                    // set the sPart2 container when 
-                    //   ?   FCoCC(1) FCoCC(2)
-                    //   |    /  \     |
-                    //   0   [1   1]   2
-                    if (sPart2['first_clean_or_custCont'] && sPart2.first_clean_or_custCont == sPart1.first_clean_or_custCont )
+                if(rangeDetails.epAncOverlapping != null && rangeDetails.epAncOverlapping.length > 0)
+                { // split ePos since it has  overlapping ancestor nodes
+                   
+                    var sPart1 = {};
+                    // perform split to isolate the selected part
+                    var sPart2 = {'node': window.ir.textarea.extract.extractContents({container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset }, {container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset + rangeDetails.eMainPos.container.length},
+                    {"top":rangeDetails.commonParent,'delete':false}),"anc":[]};
+                    if(sPart2.node != null)
                     {
-                        range.endPosition.container=sPart2['first_clean_or_custCont'];
-                        Polymer.dom(sPart2['first_clean_or_custCont']).appendChild(sPart2.node);        
+                        sPart2['anc']= utils.ancestors(rangeDetails.sMainPos.container);
+                        sPart2['first_clean_or_custCont'] = rangeDetails.firstCleanAncestorOrCustomContainer(rangeDetails.eAnc,rangeDetails.sContainer,tag,attributes);
+                        sPart2['unwrap_parent'] = rangeDetails.determineUnwrapParent(sPart2.anc,rangeDetails.sContainer,tag,attributes);
+
+                        // remove part 2
+                        sPart2['new_unwrap_top'] = rangeDetails.duplicateAncTree(sPart2.node,sPart2.unwrap_parent,sPart2.anc);
+                        window.ir.textarea.extract.extractContents({container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset}, {container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset + rangeDetails.eMainPos.container.length},{"top":rangeDetails.commonParent,'delete':true})
+
+                        // validation of sPart2 before appending to dom
+                        if((sPart2.node && sPart2.node.length > 0 && sPart2['first_clean_or_custCont'] == null))
+                            console.log('unexpected condition detected, part2 node exists, but no first_clean_or_custCont found');
+
+                        
+                        // set the sPart2 container when 
+                        //   ?   FCoCC(1) FCoCC(2)
+                        //   |    /  \     |
+                        //   0   [1   1]   2
+                        sPart1['first_clean_or_custCont'] = rangeDetails.firstCleanAncestorOrCustomContainer(rangeDetails.sAnc,tag,attributes);
+                        if (sPart2['first_clean_or_custCont'] )
+                        {
+                            range.endPosition.container=sPart2['first_clean_or_custCont'];
+                            Polymer.dom(sPart2['first_clean_or_custCont']).appendChild(sPart2.node);        
+                        }
+                        
+                    }
+                    else
+                        {console.log("unexpected condition, node2 is null");}
+                    
+                }
+                if(rangeDetails.epAncOverlapping != null && rangeDetails.spAncOverlapping.length == 0)
+                {
+                    var sPart1 = {"node":window.ir.textarea.extract.extractContents(rangeDetails.sMainPos,rangeDetails.eMainPos,{"top":rangeDetails.commonParent,delete:false})};
+                        wrap.removeNodeWraps(sPart1.node,tag,attributes);
+                        sPart1['anc'] = utils.ancestors(rangeDetails.sMainPos.container);
+                        sPart1['first_clean_or_custCont'] = rangeDetails.firstCleanAncestorOrCustomContainer(rangeDetails.sAnc,rangeDetails.sContainer,tag,attributes);
+                        
+
+                    // remove part1
+                    window.ir.textarea.extract.extractContents(rangeDetails.sMainPos,rangeDetails.eMainPos,                                                  {"top":rangeDetails.commonParent,delete:true});
+
+                    // validation of sPart1 before appending to dom
+                    if(sPart1.node && sPart1.node.length > 0 && sPart1['first_clean_or_custCont'] == null)
+                        console.log('unexpected condition detected, part1 node exists, but no first_clen_or_custCont found');
+                    if (sPart1['first_clean_or_custCont'])
+                    {
+                        range.startPosition.container = sPart1['first_clean_or_custCont'];
+                        Polymer.dom(sPart1['first_clean_or_custCont']).appendChild(sPart1.node);
                     }
                 }
-                if(utils.isDescendantOf(sPart1.first_clean_custCont, range.endPosition.container,false))
-                {
-                    console.log('range startPosition is a descendant of range.endPosition');        
-                }
-                // set the sPart2 container when 
-                //   ?   FCoCC(1)   FCoCC(2)
-                //   |    /          | \
-                //   0   [1          1]  2
-                /*if (sPart2['first_clean_or_custCont'] && sPart2.first_clean_or_custCont == sPart1.first_clean_or_custCont )
-                {
-                    range.endPosition.container=sPart2['first_clean_or_custCont'];
-                    Polymer.dom(sPart2['first_clean_or_custCont']).appendChild(sPart2.node);        
-                }*/
                 
-                // validation of sPart1 before appending to dom
-                if(sPart1.node && sPart1.node.length > 0 && sPart1['first_clean_or_custCont'] == null)
-                    console.log('unexpected condition detected, part1 node exists, but no first_clen_or_custCont found');
-                if (sPart1['first_clean_or_custCont'])
-                {
-                    range.startPosition.container = sPart1['first_clean_or_custCont'];
-                    Polymer.dom(sPart1['first_clean_or_custCont']).appendChild(sPart1.node);
-                }
-                if(range.startPosition.container != range.endPosition.container && rangeDetails.sHanging)
-                {console.log('start end containers mismatched.')}
             }
             
             // normalize all nodes between the spos hanging  and epos hanging parts
@@ -557,10 +561,15 @@ window.ir.textarea.wrap = (function() {
         {
             console.log('unwrap failed structure may be incorrect ' + err);
         }  
-        if(utils.isDescendantOf(range.endPosition.container, range.endPosition.container,false))
-                {
-                    console.log('range startPosition is a descendant of range.endPosition');        
-                }
+        if(utils.isDescendantOf(range.startPosition.container, range.endPosition.container,false))
+        {
+            console.log('range startPosition is a descendant of range.endPosition');        
+        }
+        if(range.endPosition.container == null || range.endPosition.container.nodeType == null)
+        {
+            console.log('unexpected condition endPosition container is null');        
+        }
+            
         return range;
 	}	 
     
@@ -661,20 +670,6 @@ window.ir.textarea.wrap = (function() {
         if(range.startPosition.container != range.endPositionContainer)
         {
             var details = {"range":range};
-
-            details["sHanging"] = 	range.endPosition.container != top && utils.isHangingPos(range.startPosition, top);
-            details["eHanging"] = 	range.endPosition.container != top && utils.isHangingPos(range.endPosition, top);
-            details["sMainPos"] =	utils.maybeSlidePosDown(range.startPosition);
-            details["eMainPos"] =	utils.maybeSlidePosDown(range.endPosition);
-            details["sContainer"] = utils.getNonCustomContainer(details["sMainPos"].container, top, true);
-            details["eContainer"] = utils.getNonCustomContainer(details["eMainPos"].container, top, true);
-            details["eAnc"] = utils.ancestors(details.eMainPos.container);
-            details["sAnc"] = utils.ancestors(details.sMainPos.container);
-            //details["commonParent"]  = utils.commonContainer(range.startPosition.container,range.endPosition.container);
-            details["commonParent"] = utils.firstCommonListItem(details.sAnc,details.eAnc);
-            details["drillNodes"] = nodesToDrill(range,details["sAnc"],details["eAnc"], details.commonParent);
-            details["spAncOverLapping"] = wrap.overLappingItems(details.sAnc,details["commonParent"],attributes);
-            details["epAncOverlapping"] = wrap.overLappingItems(details.eAnc,details["commonParent"],attributes);
             details["anyMatchingWraps"]  = function(anc,start,end,tag,attributes)
                 {
                     // scans the ancestor list for any nodes matching the tag and attributes specified
@@ -687,67 +682,81 @@ window.ir.textarea.wrap = (function() {
                     }
                     return isAny;
                 }
-            details["firstCleanAncestorOrCustomContainer"] = function(part,container,tag,attributes)
+            details["firstCleanAncestorOrCustomContainer"] = function(ancList,container,tag,attributes)
                 {
                     // search up the ancestor returning the first node that 
                     // either is not enclosed by the wrap we are removing  
                     // OR 
                     // the first non-custom container
-                    var indexContainer = part.anc.indexOf(container);
-                    for(var x= 0; x< part.anc.length;x++)
+                    var indexContainer = ancList.indexOf(container);
+                    for(var x= 0; x< ancList.length;x++)
                     {
-                        var isOverlapThisNode = wrap.isOverlap(part.anc[x],tag,attributes);
-                        var isOverlapAnyAnc = this.anyMatchingWraps(part.anc[x],x+1,indexContainer,tag,attributes);
-                        var isAtContainer = part.anc[x] == container;
+                        var isOverlapThisNode = wrap.isOverlap(ancList[x],tag,attributes);
+                        var isOverlapAnyAnc = this.anyMatchingWraps(ancList[x],x+1,indexContainer,tag,attributes);
+                        var isAtContainer = ancList[x] == container;
 
                         if( !isAtContainer && !isOverlapThisNode && !isOverlapAnyAnc)
-                            return part.anc[x];
+                            return ancList[x];
                         if(isAtContainer)
                             return container;
                     }
                     return null;
                 }
-                details["determineUnwrapParent"] = function(part, container, tag, attributes)
+            details["determineUnwrapParent"] = function(anc, container, tag, attributes)
+            {
+                var indexContainer = anc.indexOf(container);
+                var anyMatching = this.anyMatchingWraps(anc,0,indexContainer,tag,attributes);
+                if(anyMatching)
                 {
-                    var indexContainer = part.anc.indexOf(container);
-                    var anyMatching = this.anyMatchingWraps(part.anc,0,indexContainer,tag,attributes);
-                    if(anyMatching)
+                    for(var x = 0; x < anc.length; x++)
                     {
-                        for(var x = 0; x < part.anc.length; x++)
-                        {
-                            if(wrap.isOverlap(part.anc[x],tag,attributes))
-                                return part.anc[x];
-                        }
+                        if(wrap.isOverlap(anc[x],tag,attributes))
+                            return anc[x];
                     }
-                    else
-                        return null;
+                }
+                else
+                    return null;
 
-                }
-                details["duplicateAncTree"] = function(node,top,ancList)
+            }
+            details["duplicateAncTree"] = function(node,top,ancList)
+            {
+                var stack = [];
+                var current =null;
+                for( x in ancList )
                 {
-                    var stack = [];
-                    var current =null;
-                    for( x in ancList )
-                    {
-                        current = ancList[x];
-                        stack.push(Polymer.dom(current).cloneNode(false)); 
-                        if(current == top)break;
-                    }
-                    //stack.push(node);
-                    current = stack.pop();
-                    var newTop = current;
-                    var last = newTop;
-                    for(var x = 0;x < stack.length; x++)
-                    {
-                        current = stack.pop();
-                        if(current)
-                        {
-                            Polymer.dom(last).appendChild(current);
-                            last = current;
-                        }
-                    }
-                    if(newTop){last.appendChild(node);return newTop;} else return node;
+                    current = ancList[x];
+                    stack.push(Polymer.dom(current).cloneNode(false)); 
+                    if(current == top)break;
                 }
+                //stack.push(node);
+                current = stack.pop();
+                var newTop = current;
+                var last = newTop;
+                for(var x = 0;x < stack.length; x++)
+                {
+                    current = stack.pop();
+                    if(current)
+                    {
+                        Polymer.dom(last).appendChild(current);
+                        last = current;
+                    }
+                }
+                if(newTop){last.appendChild(node);return newTop;} else return node;
+            }
+            details["sHanging"] = 	range.endPosition.container != top && utils.isHangingPos(range.startPosition, top);
+            details["eHanging"] = 	range.endPosition.container != top && utils.isHangingPos(range.endPosition, top);
+            details["sMainPos"] =	utils.maybeSlidePosDown(range.startPosition);
+            details["eMainPos"] =	utils.maybeSlidePosDown(range.endPosition);
+            details["sContainer"] = utils.getNonCustomContainer(details["sMainPos"].container, top, true);
+            details["eContainer"] = utils.getNonCustomContainer(details["eMainPos"].container, top, true);
+            details["eAnc"] = utils.ancestors(details.eMainPos.container);
+            details["sAnc"] = utils.ancestors(details.sMainPos.container);
+            //details["commonParent"]  = utils.commonContainer(range.startPosition.container,range.endPosition.container);
+            details["commonParent"] = utils.firstCommonListItem(details.sAnc,details.eAnc);
+            details["drillNodes"] = nodesToDrill(range,details["sAnc"],details["eAnc"], details.commonParent);
+            details["spAncOverlapping"] = wrap.overLappingItems(details.sAnc,details["commonParent"],attributes);
+            details["epAncOverlapping"] = wrap.overLappingItems(details.eAnc,details["commonParent"],attributes);
+            details['unwrap_parent'] = details.determineUnwrapParent(details.sAnc,details.sContainer,tag,attributes);
             if(range.startPosition.container == range.endPosition.container)
                 details["sPosRight"] = range.endPosition;
             else

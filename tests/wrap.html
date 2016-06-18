@@ -201,7 +201,14 @@ This code may only be used under the MIT license found at http://opensource.org/
 					container : r.endContainer,
 					offset : r.endOffset
 				}
-
+            if(e.container.parentNode==null )
+            {
+                console.log('end pos container parent is null')        
+            }
+            if(s.container.parentNode==null )
+            {
+                console.log('start pos container parent is null')        
+            }
 			w.wrapRangeBlockLevel({ startPosition : s, endPosition : e }, tag, editor);
 				
 		}
@@ -227,7 +234,6 @@ This code may only be used under the MIT license found at http://opensource.org/
 						offset : r.endOffset
 					}
 			}
-			
 			last = {
 				command : "testWrapSelection",
 				arguments : [tag, utils.posToCoordinatesPos(s), utils.posToCoordinatesPos(e)],
