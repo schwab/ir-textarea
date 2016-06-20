@@ -494,11 +494,10 @@ window.ir.textarea.wrap = (function() {
                     // perform split to isolate the selected part
                     var sPart2 = {'node': window.ir.textarea.extract.extractContents({container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset }, {container:rangeDetails.eMainPos.container,offset:rangeDetails.eMainPos.offset + rangeDetails.eMainPos.container.length},
                     {"top":rangeDetails.commonParent,'delete':false}),"anc":[]};
-                    if(sPart2.node != null)
+                    if(sPart2.node !== null)
                     {
                         sPart2['anc']= utils.ancestors(rangeDetails.sMainPos.container);
                         sPart2['first_clean_or_custCont'] = rangeDetails.firstCleanAncestorOrCustomContainer(rangeDetails.eAnc,rangeDetails.sContainer,tag,attributes);
-                        sPart2['unwrap_parent'] = rangeDetails.determineUnwrapParent(sPart2.anc,rangeDetails.sContainer,tag,attributes);
 
                         // remove part 2
                         sPart2['new_unwrap_top'] = rangeDetails.duplicateAncTree(sPart2.node,sPart2.unwrap_parent,sPart2.anc);
@@ -565,35 +564,35 @@ window.ir.textarea.wrap = (function() {
         {
             console.log('range startPosition is a descendant of range.endPosition');        
         }
-        if(range.endPosition.container == null || range.endPosition.container.nodeType == null)
+        if(range.endPosition.container === null || range.endPosition.container.nodeType === null)
         {
             console.log('unexpected condition endPosition container is null');        
         }
             
         return range;
-	}	 
+	};	 
     
     wrap.overLappingItems = function(list,t,attributes){
         var isOverlap = false;
         var overlapNodes =[];
-        for(i in list)
+        for(var i in list)
         {
             if(wrap.isOverlap(list[i], t,attributes))
             {
-                overlapNodes.push(list[i])        
+                overlapNodes.push(list[i]);        
             }
         }
         return overlapNodes;
-    }
+    };
     
     wrap.removeNodeWraps = function(currentNode,tag,attributes){
             var drillChildren = function(nodes,tag,attributes)
             {
-                for(s in children)
+                for(var s in children)
                 {
                     wrap.removeNodeWraps(children[s],tag,attributes);
                 }
-            }
+            };
             // is current node a match? If yes then remove
             if(wrap.isOverlap(currentNode,tag,attributes))
             {
@@ -615,14 +614,14 @@ window.ir.textarea.wrap = (function() {
                 drillChildren(children,tag,attributes);
             
             }
-    }
+    };
     
     wrap.rangeDetails = function(range,tag,attributes){
         // get all nodes to the right and up the left side of the trapazoid to the common parent
         // and back down to the endpos
         var nodesToDrill = function(range,sAnc,eAnc,top)
         {
-            var nodeList = []
+            var nodeList = [];
             if(range.startPosition.container.parent != range.endPosition.container.parent)
             {
                 var currentNode = range.startPosition.container;
@@ -636,11 +635,11 @@ window.ir.textarea.wrap = (function() {
                     x= x+1;
                     if(x > 10) 
                         console.log("NodesToDrill may be stuck in a loop, hasn't found the end after visiting " + x + " nodes.");
-                    if(Polymer.dom(currentNode).nextSibling && !(ePosAnc > -1)) dir =0;
+                    if(Polymer.dom(currentNode).nextSibling && ePosAnc < 0) dir =0;
                     if(ePosAnc > -1) dir = -1;
                     if(!Polymer.dom(currentNode).nextSibling && !reachedTop) dir=1;
 
-                    if (dir == 0)
+                    if (dir === 0)
                     {
                         currentNode = Polymer.dom(currentNode).nextSibling;
                         //console.log("move right " + currentNode);
@@ -666,23 +665,23 @@ window.ir.textarea.wrap = (function() {
                 }
             }
             return nodeList;
-        }
+        };
         if(range.startPosition.container != range.endPositionContainer)
         {
             var details = {"range":range};
-            details["anyMatchingWraps"]  = function(anc,start,end,tag,attributes)
+            details.anyMatchingWraps  = function(ancList,start,end,tag,attributes)
                 {
                     // scans the ancestor list for any nodes matching the tag and attributes specified
                     // scan is bounded by the start and end index
-                    var isAny = false
-                    for (var x = start; x < Math.min(anc.length,Math.max(end + 1,start)); x++)
+                    var isAny = false;
+                    for (var x = start; x < Math.min(ancList.length,Math.max(end + 1,start)); x++)
                     {
-                        isAny  = isAny || wrap.isOverlap(anc[x],tag,attributes);
+                        isAny  = isAny || wrap.isOverlap(ancList[x],tag,attributes);
                         if(isAny) break;
                     }
                     return isAny;
-                }
-            details["firstCleanAncestorOrCustomContainer"] = function(ancList,container,tag,attributes)
+                };
+            details.firstCleanAncestorOrCustomContainer = function(ancList,container,tag,attributes)
                 {
                     // search up the ancestor returning the first node that 
                     // either is not enclosed by the wrap we are removing  
@@ -692,7 +691,7 @@ window.ir.textarea.wrap = (function() {
                     for(var x= 0; x< ancList.length;x++)
                     {
                         var isOverlapThisNode = wrap.isOverlap(ancList[x],tag,attributes);
-                        var isOverlapAnyAnc = this.anyMatchingWraps(ancList[x],x+1,indexContainer,tag,attributes);
+                        var isOverlapAnyAnc = this.anyMatchingWraps(ancList,x+1,indexContainer,tag,attributes);
                         var isAtContainer = ancList[x] == container;
 
                         if( !isAtContainer && !isOverlapThisNode && !isOverlapAnyAnc)
@@ -701,10 +700,58 @@ window.ir.textarea.wrap = (function() {
                             return container;
                     }
                     return null;
-                }
-            details["determineUnwrapParent"] = function(anc, container, tag, attributes)
+                };
+            details.getImmediateSiblings=function(node)
+                {
+                    var listNodes = [];
+                    var next = node.nextSibling;
+                    while(next)
+                    {
+                        listNodes.push(next);
+                        next = next.nextSibling;
+                        }
+                    return listNodes;
+                };
+            details.getRightCousinNodes = function(node, anc,top,tag,attributes)
             {
-                var indexContainer = anc.indexOf(container);
+                // retrieve all the siblings to the right of the node and do so recursively
+                // until we reach the top (which should be our FCoCC)
+                // verify the top node is in the anc list (to prevent infinite loops)
+                if(node)
+                {
+                    var isInAncList = anc.indexOf(node) > -1;
+                    var isOverlapThisNode = wrap.isOverlap(node,tag,attributes);
+                    var listNodes = [];
+                    if(!isInAncList && !isOverlapThisNode)
+                    {
+                        listNodes.append(node);
+                    }
+                    
+                    Array.prototype.push.apply(listNodes,this.getImmediateSiblings(node))
+                    // move up the tree adding parent siblings
+                    // (but not parents in the anc list or parents adding the style we are unwrapping)
+                    if(node.parentNode && node.parentNode != top)
+                    {
+                        var isOverlapParentNode = wrap.isOverlap(node.parentNode,tag,attributes);
+                        var isAncestorParentNode = anc.indexOf(node.parentNode) > -1;
+                        if(!isOverlapParentNode && !isAncestorParentNode)
+                            listNodes.push(node.parentNode);
+                        var parentSiblings = this.getRightCousinNodes(node.parentNode,anc,top,tag,attributes);
+                        Array.prototype.push.apply(listNodes,parentSiblings)
+                    }
+                    return listNodes;
+                }
+                else
+                {
+                    Array.prototype.push.apply(this.getImmediateSiblings((node)))
+                
+                }
+                return null;
+                
+            };
+            details.determineTopUnwrapParent = function(anc, top, tag, attributes)
+            {
+                var indexContainer = anc.indexOf(top);
                 var anyMatching = this.anyMatchingWraps(anc,0,indexContainer,tag,attributes);
                 if(anyMatching)
                 {
@@ -717,12 +764,12 @@ window.ir.textarea.wrap = (function() {
                 else
                     return null;
 
-            }
-            details["duplicateAncTree"] = function(node,top,ancList)
+            };
+            details.duplicateAncTree = function(node,top,ancList)
             {
                 var stack = [];
                 var current =null;
-                for( x in ancList )
+                for( var x in ancList )
                 {
                     current = ancList[x];
                     stack.push(Polymer.dom(current).cloneNode(false)); 
@@ -732,7 +779,7 @@ window.ir.textarea.wrap = (function() {
                 current = stack.pop();
                 var newTop = current;
                 var last = newTop;
-                for(var x = 0;x < stack.length; x++)
+                for(var idx = 0;x < stack.length; idx++)
                 {
                     current = stack.pop();
                     if(current)
@@ -742,39 +789,42 @@ window.ir.textarea.wrap = (function() {
                     }
                 }
                 if(newTop){last.appendChild(node);return newTop;} else return node;
-            }
-            details["sHanging"] = 	range.endPosition.container != top && utils.isHangingPos(range.startPosition, top);
-            details["eHanging"] = 	range.endPosition.container != top && utils.isHangingPos(range.endPosition, top);
-            details["sMainPos"] =	utils.maybeSlidePosDown(range.startPosition);
-            details["eMainPos"] =	utils.maybeSlidePosDown(range.endPosition);
-            details["sContainer"] = utils.getNonCustomContainer(details["sMainPos"].container, top, true);
-            details["eContainer"] = utils.getNonCustomContainer(details["eMainPos"].container, top, true);
-            details["eAnc"] = utils.ancestors(details.eMainPos.container);
-            details["sAnc"] = utils.ancestors(details.sMainPos.container);
+            };
+            details.sHanging = 	range.endPosition.container != top && utils.isHangingPos(range.startPosition, top);
+            details.eHanging = 	range.endPosition.container != top && utils.isHangingPos(range.endPosition, top);
+            details.sMainPos =	utils.maybeSlidePosDown(range.startPosition);
+            details.eMainPos =	utils.maybeSlidePosDown(range.endPosition);
+            details.sContainer = utils.getNonCustomContainer(details.sMainPos.container, top, true);
+            details.eContainer = utils.getNonCustomContainer(details.eMainPos.container, top, true);
+            details.eAnc = utils.ancestors(details.eMainPos.container);
+            details.sAnc = utils.ancestors(details.sMainPos.container);
             //details["commonParent"]  = utils.commonContainer(range.startPosition.container,range.endPosition.container);
-            details["commonParent"] = utils.firstCommonListItem(details.sAnc,details.eAnc);
-            details["drillNodes"] = nodesToDrill(range,details["sAnc"],details["eAnc"], details.commonParent);
-            details["spAncOverlapping"] = wrap.overLappingItems(details.sAnc,details["commonParent"],attributes);
-            details["epAncOverlapping"] = wrap.overLappingItems(details.eAnc,details["commonParent"],attributes);
-            details['unwrap_parent'] = details.determineUnwrapParent(details.sAnc,details.sContainer,tag,attributes);
+            details.commonParent = utils.firstCommonListItem(details.sAnc,details.eAnc);
+            details.drillNodes  = nodesToDrill(range,details.sAnc,details.eAnc, details.commonParent);
+            details.spAncOverlapping = wrap.overLappingItems(details.sAnc,details.commonParent,attributes);
+            details.epAncOverlapping = wrap.overLappingItems(details.eAnc,details.commonParent,attributes);
+            // moved hanging nodes will be siblings of the top unwrap parent
+            details.ePos_unwrap_parent = details.determineTopUnwrapParent(details.sAnc,details.sContainer,tag,attributes);
+            details.sPos_unwrap_parent = details.determineTopUnwrapParent(details.eAnc,details.eContainer,tag,attributes);
             if(range.startPosition.container == range.endPosition.container)
-                details["sPosRight"] = range.endPosition;
+                details.sPosRight = range.endPosition;
             else
-                details["sPosRight"] = { container : range.startPosition.container, offset : range.startPosition.container.textContent.length}
+                details.sPosRight = { container : range.startPosition.container, offset : range.startPosition.container.textContent.length};
         
             return details;
         }
+        else return null;
         
-    }
+    };
 
 	// internal method, will replace/wrap the node and/or return the node from which wrapRangeBlockLevel will look for nextSibling
 	wrap.wrapOrReplaceNode = function(node, wrapper, top) { 
-		var newNode, orig, subtrans, cea, t,
+		var newNode,  subtrans, cea, t,
 			condition = function(m) { 
 				return 	utils.isNonCustomContainer(m) && 
 							!utils.isTransitionalElement(m) &&
 								!utils.isSubTransitionalElement(m) &&
-									!(utils.getTopCustomElementAncestor(m, top, true) && m.getAttribute('contenteditable')) 
+									!(utils.getTopCustomElementAncestor(m, top, true) && m.getAttribute('contenteditable')) ;
 			};
 		
 		if(condition(node))

@@ -1,0 +1,141 @@
+<!doctype html>
+<!--
+@license
+Copyright (c) 2015 Igor Rubinovich <igor.rubinovich@gmail.com>. All rights reserved.
+This code may only be used under the MIT license found at http://opensource.org/licenses/MIT
+-->
+<html>
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+
+  <link rel="import" href="../../polymer/polymer.html">
+
+  <link rel="import" href="../../ir-gallery/ir-gallery.html">
+
+  <script src="../modules/utils.js"></script>
+  <script src="../modules/caretRules.js"></script>
+  <script src="../modules/extract.js"></script>
+  <script src="../modules/paste.js"></script>
+  <script src="../modules/wrap.js"></script>
+
+  <style>
+	body { background-color : #eaeaea; padding : 25px }
+	button { border-radius : 3px; min-width : 60px; height : 30px; font-size : 12px }
+	.caret { display : inline-block; height : 1em; border : #fafafa 1px solid; padding : 4px; background : red; color : white; font-family : Arial; font-size : 10px }
+	span.paragraph { display : block; border : blue 1px solid }
+	#editor { 
+		box-shadow : 0 0 3px lightblue; margin : 0 0 25px 0; padding : 25px; background-color : white 
+		white-space: pre-wrap;       /* css-3 */
+		white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+		white-space: -pre-wrap;      /* Opera 4-6 */
+		white-space: -o-pre-wrap;    /* Opera 7 */
+		word-wrap: break-word;       /* Internet Explorer 5.5+ */
+	}
+	#elclone { max-height : 100px; overflow : hidden; }
+	.testWrapper { border : 1px solid red; margin : 5px }
+  </style>  
+</head>
+<body>
+	
+	<div>
+		<button onclick="testUnWrapContents()">UnWrap Right</button>
+		
+	</div>
+	<script>
+		var editor, w = window.ir.textarea.wrap;
+
+		window.addEventListener('DOMContentLoaded', function () {
+			editor = document.getElementById('editor');
+		});
+		
+		
+		
+		function testUnWrapContents() {
+			var node =Polymer.dom(document.getElementById('target'));
+			var endNode = Polymer.dom(document.getElementById('end'));
+			var result = Polymer.dom(document.getElementById('results'));
+			console.log(node);
+            s = {
+                    container : node,
+                    offset : 0
+                };
+            e = {
+                    container : endNode,
+                    offset : 0
+                };
+            range = {startPosition:s, endPosition:e};
+            
+            var rd = w.rangeDetails(range,"b",null);
+            var fcaocc = rd.firstCleanAncestorOrCustomContainer(rd.sAnc,rd.sContainer,'b',null);
+            var nodesToMove = [node.node];
+            var siblings  = rd.getImmediateSiblings(node);
+            Array.prototype.push.apply(nodesToMove,siblings);
+            var rightCousinNodes = rd.getRightCousinNodes(node.parentNode,rd.sAnc,fcaocc,'b',null);
+            Array.prototype.push.apply(nodesToMove,rightCousinNodes);
+            
+            console.log(nodesToMove);
+            for(var x in nodesToMove )
+            {
+                result.appendChild(nodesToMove[x]);
+            }
+		};
+		
+		
+		
+	</script>
+
+	<div 
+		id="editor" 
+		contenteditable
+	><ir-gallery contenteditable="false" theme="blackfriday" style="display: inline-block;"><div class="caption-wrapper"><img src="http://lorempixel.com/300/200/" style="display: inline-block; position: relative; transform: translate(0px, 0px);"><div class="caption" contenteditable="true">hi caption</div></div></ir-gallery><table border>
+		<tr>
+			<td>
+				<div>
+					<span id='FCoCC'>
+					    This node is FCoCC but that should be determined by the algorihtm (without using its' id)
+					    <br/>
+						<b>
+							<b>
+								<span>Extra bolded text</span>
+							</b>
+							<span id='z'>
+								<b>
+								    remove after this --&gt;
+								    <span style='background-color:cyan'>
+									    <span id='target'>this is some text to liberate</span> 
+									    <span id="x" style='background-color: yellow'>nearby bold text</span>
+									</span>
+									
+								</b>
+								<span style='background-color:cyan'>
+								    This is span z
+								</span>
+							</span>
+							
+							<span style='background-color:cyan'>
+							    <span>needs to get out of the b</span>
+							    <span id='end'>also leaving the b</span>
+							</span>
+						</b>
+						<span style='background-color:cyan'>
+						<i id=>italizsed</i>
+						</span>
+					</span>
+						&lt;-- before this should go
+					
+					
+				</div>
+			</td>
+			<td>tabled</td>
+		</tr>
+		<tr>
+			<td><div id='results'></div></td>
+			<td>here</td>
+		</tr>
+	</table>
+</body>
+</html>
